@@ -1,0 +1,18 @@
+resolver: lts-20.17
+
+packages:
+  - "."
+
+extra-deps:
+  - git: https://github.com/brendanhay/amazonka
+    commit: 0d70474d888c5e5a43417ac9f7b408e7890ff853
+    subdirs:
+      [
+        lib/amazonka,
+        lib/amazonka-core,
+        lib/services/amazonka-sso,
+        lib/services/amazonka-sts,
+        lib/services/amazonka-s3,
+        lib/services/amazonka-sqs,
+        lib/services/amazonka-ecs,
+      ]
