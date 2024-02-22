@@ -308,9 +308,6 @@ concurrentUpload
     do
       CreateMultipartUploadResponse'{uploadId = upId} <- send env' multiPartUploadDesc
 
-      -- let logStr :: MonadIO n => String -> n ()
-      --     logStr = liftIO . logger env' Info . stringUtf8
-
       let calculateChunkSize :: Int -> Int
           calculateChunkSize len =
             let chunkSize' = maybe minimumChunkSize (max minimumChunkSize) mChunkSize
@@ -323,7 +320,7 @@ concurrentUpload
         if maybe False (> mConnCount) mNumThreads
           then do
             mgr' <- liftIO $ newManager tlsManagerSettings{managerConnCount = nThreads}
-            pure env'{AWS.envManager = mgr'}
+            pure env'{AWS.manager = mgr'}
           else pure env'
       flip onException (send env (newAbortMultipartUpload buck k upId)) $ do
         sem <- liftIO $ newQSem nThreads
@@ -332,9 +329,7 @@ concurrentUpload
             let chunkSize = calculateChunkSize $ BS.length bytes
              in liftIO $ forConcurrently (zip [1 ..] $ chunksOf chunkSize bytes) $ \(partnum, chunk) ->
                   bracket_ (waitQSem sem) (signalQSem sem) $ do
-                    --                    logStr $ "Starting part: " ++ show partnum
                     UploadPartResponse'{eTag} <- runResourceT $ send env . newUploadPart buck k partnum upId . toBody $ chunk
-                    --                    logStr $ "Finished part: " ++ show partnum
                     pure $ newCompletedPart partnum <$> eTag
           FP filePath -> do
             fsize <- liftIO $ getFileSize filePath
@@ -355,7 +350,6 @@ concurrentUpload
                   runResourceT $
                     send env . newUploadPart buck k partnum upId . toBody $
                       chunkStream
-                --                logStr $ "Finished file part: " ++ show partnum
                 pure $ newCompletedPart partnum <$> eTag
 
         let parts = nonEmpty =<< sequence uploadResponses
